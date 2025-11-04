@@ -261,6 +261,7 @@
         const LAG_THRESHOLD_FPS = 15; 
         const INITIAL_SQUIRREL_SPEED = 1.0; 
         const SPAWN_RADIUS = 10; 
+        const BUFFER_SIZE = 50; // Размер буфера для отскока (равный размеру белки)
         
         let smoothedFps = 60; 
         const FPS_SMOOTHING_FACTOR = 0.03; 
@@ -358,28 +359,28 @@
                 s.x += s.vx * speedFactor;
                 s.y += s.vy * speedFactor;
 
-                // Проверка границ: y=0 — это граница с верхней панелью
+                // --- НОВАЯ ЛОГИКА: Отскок с заходом за кадр ---
                 
-                // Левая граница
-                if (s.x < 0) {
+                // Левая граница (отскок при X < -BUFFER_SIZE)
+                if (s.x < -BUFFER_SIZE) {
                     s.vx *= -1;
-                    s.x = 0; 
+                    s.x = -BUFFER_SIZE; 
                 }
-                // Правая граница
-                else if (s.x > width - SQUIRREL_SIZE) {
+                // Правая граница (отскок при X > Width + BUFFER_SIZE)
+                else if (s.x > width + BUFFER_SIZE - SQUIRREL_SIZE) {
                     s.vx *= -1;
-                    s.x = width - SQUIRREL_SIZE; 
+                    s.x = width + BUFFER_SIZE - SQUIRREL_SIZE; 
                 }
                 
-                // Верхняя граница (не заходят под панель)
-                if (s.y < 0) {
+                // Верхняя граница (отскок при Y < -BUFFER_SIZE)
+                if (s.y < -BUFFER_SIZE) {
                     s.vy *= -1;
-                    s.y = 0;
+                    s.y = -BUFFER_SIZE;
                 }
-                // Нижняя граница
-                else if (s.y > height - SQUIRREL_SIZE) {
+                // Нижняя граница (отскок при Y > Height + BUFFER_SIZE)
+                else if (s.y > height + BUFFER_SIZE - SQUIRREL_SIZE) {
                     s.vy *= -1;
-                    s.y = height - SQUIRREL_SIZE;
+                    s.y = height + BUFFER_SIZE - SQUIRREL_SIZE;
                 }
                 
                 s.element.style.left = `${s.x}px`;
