@@ -260,8 +260,7 @@
         const MAX_FPS_CAP = 60; 
         const LAG_THRESHOLD_FPS = 15; 
         const INITIAL_SQUIRREL_SPEED = 1.0; 
-        const SPAWN_RADIUS = 10; 
-        const BUFFER_SIZE = 50; // Размер буфера для отскока (равный размеру белки)
+        const BUFFER_SIZE = 50; // Размер буфера для отскока за кадром
         
         let smoothedFps = 60; 
         const FPS_SMOOTHING_FACTOR = 0.03; 
@@ -270,9 +269,10 @@
 
         let isHolding = false;
         let spawnIntervalId = null;
-        const SPAWN_RATE_MS = 1; 
-        const SQUIRRELS_PER_INTERVAL = 10; 
+        const SPAWN_RATE_MS = 10; // 100 белок/сек
+        const SQUIRRELS_PER_INTERVAL = 1; 
         
+        // ОБНОВЛЕНО: Случайный спавн по всему полю
         function spawnSingleSquirrel() {
             score++;
             scoreValue.textContent = score;
@@ -284,14 +284,11 @@
             const width = gameRect.width;
             const height = gameRect.height;
             
-            // Точка спавна: Центр игрового поля с небольшим случайным смещением
-            const centerGameX = (width / 2);
-            const centerGameY = (height / 2);
+            // Точка спавна: Случайное место на игровом поле
+            const startX = Math.random() * (width - SQUIRREL_SIZE);
+            const startY = Math.random() * (height - SQUIRREL_SIZE); 
             
-            const startX = centerGameX - (SQUIRREL_SIZE / 2) + (Math.random() * SPAWN_RADIUS * 2 - SPAWN_RADIUS);
-            const startY = centerGameY - (SQUIRREL_SIZE / 2) + (Math.random() * SPAWN_RADIUS * 2 - SPAWN_RADIUS);
-            
-            // Вектор скорости: Случайное, но низкое направление из центра
+            // Вектор скорости: Случайное направление
             const angle = Math.random() * 2 * Math.PI; 
             const speed = INITIAL_SQUIRREL_SPEED + (Math.random() * 0.5); 
 
@@ -313,16 +310,10 @@
             gameArea.appendChild(squirrelElement);
         }
 
-        // НОВАЯ ФУНКЦИЯ: Запуск последовательного спавна пакета
+        // НОВАЯ ФУНКЦИЯ: Запуск последовательного спавна (1 белка за раз)
         function startSpawner() {
-            let count = 0;
-            const interval = setInterval(() => {
-                spawnSingleSquirrel();
-                count++;
-                if (count >= SQUIRRELS_PER_INTERVAL) {
-                    clearInterval(interval);
-                }
-            }, 50); // Интервал между белками в пакете (50 мс для плавности)
+            // Поскольку SPAWN_RATE_MS теперь 10 мс, мы спавним только 1 белку
+            spawnSingleSquirrel();
         }
 
         function startSpawning(e) {
@@ -332,10 +323,10 @@
             isHolding = true;
             clickTip.style.display = 'none'; 
             
-            // Запускаем первый пакет сразу
+            // Запускаем первую белку сразу
             startSpawner();
 
-            // Устанавливаем интервал для повторения всего пакета (максимально быстро)
+            // Устанавливаем интервал для спавна 1 белки каждые 10 мс
             spawnIntervalId = setInterval(startSpawner, SPAWN_RATE_MS); 
         }
 
@@ -352,6 +343,7 @@
             const height = gameRect.height;
             
             const speedFactor = deltaTime / 16.67; 
+            const BUFFER_SIZE = SQUIRREL_SIZE; 
             
             for (let i = squirrels.length - 1; i >= 0; i--) {
                 const s = squirrels[i];
@@ -359,25 +351,25 @@
                 s.x += s.vx * speedFactor;
                 s.y += s.vy * speedFactor;
 
-                // --- НОВАЯ ЛОГИКА: Отскок с заходом за кадр ---
+                // --- ЛОГИКА: Отскок с заходом за кадр ---
                 
-                // Левая граница (отскок при X < -BUFFER_SIZE)
+                // Левая граница
                 if (s.x < -BUFFER_SIZE) {
                     s.vx *= -1;
                     s.x = -BUFFER_SIZE; 
                 }
-                // Правая граница (отскок при X > Width + BUFFER_SIZE)
+                // Правая граница
                 else if (s.x > width + BUFFER_SIZE - SQUIRREL_SIZE) {
                     s.vx *= -1;
                     s.x = width + BUFFER_SIZE - SQUIRREL_SIZE; 
                 }
                 
-                // Верхняя граница (отскок при Y < -BUFFER_SIZE)
+                // Верхняя граница
                 if (s.y < -BUFFER_SIZE) {
                     s.vy *= -1;
                     s.y = -BUFFER_SIZE;
                 }
-                // Нижняя граница (отскок при Y > Height + BUFFER_SIZE)
+                // Нижняя граница
                 else if (s.y > height + BUFFER_SIZE - SQUIRREL_SIZE) {
                     s.vy *= -1;
                     s.y = height + BUFFER_SIZE - SQUIRREL_SIZE;
