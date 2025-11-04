@@ -96,8 +96,8 @@
 
         .squirrel {
             position: absolute;
-            width: 50px; 
-            height: 50px; 
+            width: 30px; 
+            height: 30px; 
             pointer-events: none;
             user-select: none;
 
@@ -192,7 +192,7 @@
             FPS: <span id="fps-value">--</span>
         </div>
         <div id="score-display" class="info-box">
-            Белок: <span id="score-value">0</span>
+            СЧЕТ: <span id="score-value">0</span>
         </div>
     </div>
 
@@ -202,7 +202,7 @@
             <h2>🏆 ТЕСТ ЗАВЕРШЕН!</h2>
             <p>Ваше устройство выдержало</p>
             <p id="final-score-container">
-                <span id="final-score">0</span> БЕЛОК!
+                <span id="final-score">0</span> ОЧКОВ!
             </p>
             <p id="final-fps">Мин. FPS: --</p>
             <button id="share-button" onclick="shareResult()">Поделиться результатом</button>
@@ -256,25 +256,31 @@
         let animationFrameId; 
         let squirrels = []; 
 
-        const SQUIRREL_SIZE = 50; 
+        const SQUIRREL_SIZE = 30; 
         const MAX_FPS_CAP = 60; 
         const LAG_THRESHOLD_FPS = 15; 
         const INITIAL_SQUIRREL_SPEED = 1.0; 
-        const BUFFER_SIZE = 50; // Размер буфера для отскока за кадром
+        const BUFFER_SIZE = 30; 
+        
+        // КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Устанавливаем простой множитель 2x
+        const SCORE_MULTIPLIER = 2; 
         
         let smoothedFps = 60; 
-        const FPS_SMOOTHING_FACTOR = 0.03; 
+        const FPS_SMOOTHING_FACTOR = 0.01; 
 
         let minAchievedFps = MAX_FPS_CAP; 
 
         let isHolding = false;
         let spawnIntervalId = null;
-        const SPAWN_RATE_MS = 10; // 100 белок/сек
-        const SQUIRRELS_PER_INTERVAL = 1; 
         
-        // ОБНОВЛЕНО: Случайный спавн по всему полю
+        // Сбалансированный плавный спавн
+        const SPAWN_RATE_MS = 100; // 10 раз/сек
+        const SQUIRRELS_PER_INTERVAL = 10; // 10 белок за цикл
+        
+        
         function spawnSingleSquirrel() {
-            score++;
+            // Увеличиваем счет на 2
+            score += SCORE_MULTIPLIER;
             scoreValue.textContent = score;
 
             const squirrelElement = document.createElement('div');
@@ -310,10 +316,11 @@
             gameArea.appendChild(squirrelElement);
         }
 
-        // НОВАЯ ФУНКЦИЯ: Запуск последовательного спавна (1 белка за раз)
+        // НОВАЯ ФУНКЦИЯ: Запуск пакета белок
         function startSpawner() {
-            // Поскольку SPAWN_RATE_MS теперь 10 мс, мы спавним только 1 белку
-            spawnSingleSquirrel();
+            for (let i = 0; i < SQUIRRELS_PER_INTERVAL; i++) {
+                spawnSingleSquirrel();
+            }
         }
 
         function startSpawning(e) {
@@ -323,10 +330,10 @@
             isHolding = true;
             clickTip.style.display = 'none'; 
             
-            // Запускаем первую белку сразу
+            // Запускаем первый пакет сразу
             startSpawner();
 
-            // Устанавливаем интервал для спавна 1 белки каждые 10 мс
+            // Устанавливаем интервал для повторения пакета
             spawnIntervalId = setInterval(startSpawner, SPAWN_RATE_MS); 
         }
 
@@ -454,7 +461,7 @@
         window.shareResult = function() {
             const finalScoreValue = document.getElementById('final-score').textContent;
             const finalFpsValue = minAchievedFps;
-            const message = `Моё устройство выдержало ${finalScoreValue} Белок, достигнув ${finalFpsValue} FPS! 🐿️ Проверь свой FPS в "Белка-Тестере"!`;
+            const message = `Моё устройство выдержало ${finalScoreValue} очков, достигнув ${finalFpsValue} FPS! 🐿️ Проверь свой FPS в "Белка-Тестере"!`;
             
             if (isTelegram) {
                 tg.sendData(`score:${finalScoreValue}|fps:${finalFpsValue}`);
