@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Беличий Лагометр (Squirrel Wars)</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <style>
+        :root {
+            --bg-color: #79c753;
+            --text-color: #fff;
+            --info-bg: rgba(0, 0, 0, 0.7);
+            --modal-bg: #fff;
+            --modal-overlay: rgba(0, 0, 0, 0.8);
+        }
+
+        /* --- TWA АДАПТАЦИЯ --- */
+        html, body {
+            height: 100vh; 
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; 
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            color: var(--text-color);
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            background: var(--tg-theme-bg-color, var(--bg-color)); 
+        }
+
+        #game-area {
+            position: relative;
+            width: 100%;
+            cursor: pointer;
+            
+            top: 60px; 
+            height: calc(100% - 60px); 
+            
+            background-color: #ffffff; 
+            
+            max-width: 500px; 
+            margin: 0 auto;
+            
+            touch-action: manipulation; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+
+        /* НОВЫЙ ЭЛЕМЕНТ: Непроницаемый верхний бар */
+        #top-bar-overlay {
+            position: fixed; 
+            top: 0;
+            max-width: 500px;
+            width: 100%; 
+            height: 60px; 
+            background-color: white; 
+            z-index: 200; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        /* КОНТЕЙНЕР ДЛЯ СЧЕТЧИКОВ */
+        #info-container {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            max-width: 500px;
+            height: 60px; 
+            z-index: 210;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 10px;
+            box-sizing: border-box; 
+        }
+
+
+        /* --- СТИЛИ ЭЛЕМЕНТОВ ИГРЫ --- */
+
+        .info-box {
+            position: relative; 
+            padding: 5px 10px; 
+            background-color: var(--info-bg); 
+            color: var(--text-color); 
+            font-size: 1.2em; 
+            border-radius: 5px;
+            z-index: 210; 
+        }
+
+        .squirrel {
+            position: absolute;
+            width: 50px; 
+            height: 50px; 
+            pointer-events: none;
+            user-select: none;
+
+            z-index: 50; 
+            background-image: url('images/your-squirrel.png'); 
+            background-size: contain; 
+            background-repeat: no-repeat;
+            background-position: center;
+            outline: none; 
+        }
+
+        #click-tip {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgba(0, 0, 0, 0.5); 
+            font-size: 1.5em;
+            z-index: 5;
+            text-align: center;
+        }
+
+        /* --- СТИЛИ МОДАЛЬНОГО ОКНА --- */
+        #modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--modal-overlay);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 300; 
+        }
+
+        #modal-content {
+            background-color: var(--modal-bg);
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            color: #333;
+            animation: fadeIn 0.5s;
+            max-width: 90%;
+        }
+
+        #final-score-container {
+            font-size: 1.2em;
+            margin: 10px 0;
+        }
+        
+        #final-score {
+            font-size: 4em;
+            font-weight: bold;
+            color: #ff6600;
+        }
+
+        #final-fps {
+            font-size: 1.5em;
+            color: #cc0000;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        
+        #share-button {
+            margin-top: 15px;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            background-color: #0088cc; 
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-area">
+        <p id="click-tip">Нажмите и удерживайте, чтобы вызвать белок!</p>
+    </div>
+    
+    <div id="top-bar-overlay"></div> 
+    
+    <div id="info-container">
+        <div id="fps-display" class="info-box">
+            FPS: <span id="fps-value">--</span>
+        </div>
+        <div id="score-display" class="info-box">
+            Белок: <span id="score-value">0</span>
+        </div>
+    </div>
+
+
+    <div id="modal-overlay">
+        <div id="modal-content">
+            <h2>🏆 ТЕСТ ЗАВЕРШЕН!</h2>
+            <p>Ваше устройство выдержало</p>
+            <p id="final-score-container">
+                <span id="final-score">0</span> БЕЛОК!
+            </p>
+            <p id="final-fps">Мин. FPS: --</p>
+            <button id="share-button" onclick="shareResult()">Поделиться результатом</button>
+            <button onclick="resetGame()">Начать Снова</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. ИНИЦИАЛИЗАЦИЯ TELEGRAM WEB APP (TWA) ---
+        const isTelegram = window.Telegram && window.Telegram.WebApp;
+        const tg = isTelegram ? window.Telegram.WebApp : null;
+        const STORAGE_KEY = 'squirrel_wars_high_score'; 
+
+        if (isTelegram) {
+            tg.ready();
+            tg.expand(); 
+            document.body.style.backgroundColor = tg.themeParams.bg_color || '#79c753';
+        }
+        
+        // --- 2. ФУНКЦИИ CLOUD STORAGE (Заглушки) ---
+
+        function saveProgress(finalScore) {
+            if (isTelegram && tg.CloudStorage) {
+                tg.CloudStorage.setItem(STORAGE_KEY, String(finalScore), (error, was_saved) => {
+                    if (error) {
+                        console.error("Cloud Storage Save Error:", error);
+                    }
+                });
+            }
+        }
+
+        if (isTelegram) {
+            window.addEventListener('pagehide', () => { if (score > 0) saveProgress(score); });
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden' && score > 0) saveProgress(score);
+            });
+        }
+        
+        // --- 3. ОСНОВНОЙ КОД ИГРЫ ---
+        
+        const gameArea = document.getElementById('game-area');
+        const scoreValue = document.getElementById('score-value');
+        const fpsValue = document.getElementById('fps-value');
+        const modalOverlay = document.getElementById('modal-overlay');
+        const finalScore = document.getElementById('final-score');
+        const finalFpsDisplay = document.getElementById('final-fps');
+        const clickTip = document.getElementById('click-tip');
+
+        let score = 0;
+        let lastTime = 0;
+        let animationFrameId; 
+        let squirrels = []; 
+
+        const SQUIRREL_SIZE = 50; 
+        const MAX_FPS_CAP = 60; 
+        const LAG_THRESHOLD_FPS = 15; 
+        const INITIAL_SQUIRREL_SPEED = 1.0; 
+        const SPAWN_RADIUS = 10; 
+        
+        let smoothedFps = 60; 
+        const FPS_SMOOTHING_FACTOR = 0.03; 
+
+        let minAchievedFps = MAX_FPS_CAP; 
+
+        let isHolding = false;
+        let spawnIntervalId = null;
+        
+        // ПЛАВНЫЙ ПАКЕТНЫЙ СПАВН
+        const PACKET_INTERVAL_MS = 50; // Интервал между белками в пакете (для плавности)
+        const SPAWN_REPETITION_RATE = 1; // Частота повторения всего пакета (1 мс - максимально быстро)
+        const SQUIRRELS_PER_PACKET = 10; // Количество белок в одном пакете
+        
+        // ОБНОВЛЕНО: Спавн одной белки
+        function spawnSingleSquirrel() {
+            score++;
+            scoreValue.textContent = score;
+
+            const squirrelElement = document.createElement('div');
+            squirrelElement.className = 'squirrel';
+
+            const gameRect = gameArea.getBoundingClientRect();
+            const width = gameRect.width;
+            const height = gameRect.height;
+            
+            // Точка спавна: Центр игрового поля с небольшим случайным смещением
+            const centerGameX = (width / 2);
+            const centerGameY = (height / 2);
+            
+            const startX = centerGameX - (SQUIRREL_SIZE / 2) + (Math.random() * SPAWN_RADIUS * 2 - SPAWN_RADIUS);
+            const startY = centerGameY - (SQUIRREL_SIZE / 2) + (Math.random() * SPAWN_RADIUS * 2 - SPAWN_RADIUS);
+            
+            // Вектор скорости: Случайное, но низкое направление из центра
+            const angle = Math.random() * 2 * Math.PI; 
+            const speed = INITIAL_SQUIRREL_SPEED + (Math.random() * 0.5); 
+
+            const vx = Math.cos(angle) * speed; 
+            const vy = Math.sin(angle) * speed; 
+
+            squirrelElement.style.left = `${startX}px`;
+            squirrelElement.style.top = `${startY}px`;
+
+            const squirrelData = {
+                element: squirrelElement,
+                x: startX, 
+                y: startY,
+                vx: vx, 
+                vy: vy,
+            };
+
+            squirrels.push(squirrelData);
+            gameArea.appendChild(squirrelElement);
+        }
+
+        // НОВАЯ ФУНКЦИЯ: Запуск последовательного спавна пакета
+        function startSpawner() {
+            let count = 0;
+            const interval = setInterval(() => {
+                spawnSingleSquirrel();
+                count++;
+                if (count >= SQUIRRELS_PER_PACKET) {
+                    clearInterval(interval);
+                }
+            }, PACKET_INTERVAL_MS);
+        }
+
+        function startSpawning(e) {
+            if (isHolding || modalOverlay.style.display === 'flex') return; 
+            if (e.type === 'touchstart' || e.type === 'mousedown') e.preventDefault();
+            
+            isHolding = true;
+            clickTip.style.display = 'none'; 
+            
+            // Запускаем первый пакет сразу
+            startSpawner();
+
+            // Устанавливаем интервал для повторения всего пакета (максимально часто)
+            spawnIntervalId = setInterval(startSpawner, SPAWN_REPETITION_RATE); 
+        }
+
+        function stopSpawning() {
+            if (spawnIntervalId) {
+                clearInterval(spawnIntervalId);
+            }
+            isHolding = false;
+        }
+        
+        function updateSquirrels(deltaTime) {
+            const gameRect = gameArea.getBoundingClientRect();
+            const width = gameRect.width;
+            const height = gameRect.height;
+            
+            const speedFactor = deltaTime / 16.67; 
+            
+            for (let i = squirrels.length - 1; i >= 0; i--) {
+                const s = squirrels[i];
+                
+                s.x += s.vx * speedFactor;
+                s.y += s.vy * speedFactor;
+
+                // Проверка границ: y=0 — это граница с верхней панелью
+                
+                // Левая граница
+                if (s.x < 0) {
+                    s.vx *= -1;
+                    s.x = 0; 
+                }
+                // Правая граница
+                else if (s.x > width - SQUIRREL_SIZE) {
+                    s.vx *= -1;
+                    s.x = width - SQUIRREL_SIZE; 
+                }
+                
+                // Верхняя граница (не заходят под панель)
+                if (s.y < 0) {
+                    s.vy *= -1;
+                    s.y = 0;
+                }
+                // Нижняя граница
+                else if (s.y > height - SQUIRREL_SIZE) {
+                    s.vy *= -1;
+                    s.y = height - SQUIRREL_SIZE;
+                }
+                
+                s.element.style.left = `${s.x}px`;
+                s.element.style.top = `${s.y}px`;
+            }
+        }
+
+        function gameLoop(currentTime) {
+            let delta = currentTime - lastTime;
+            lastTime = currentTime;
+            
+            let rawFps = Math.round(1000 / delta); 
+            if (rawFps < 0 || isNaN(rawFps) || rawFps === Infinity) {
+                rawFps = 0;
+            }
+            if (rawFps > 120) rawFps = 120; 
+
+            let cappedFps = Math.min(rawFps, MAX_FPS_CAP);
+
+            // 1. Сглаживание FPS (EMA)
+            smoothedFps = (cappedFps * FPS_SMOOTHING_FACTOR) + (smoothedFps * (1 - FPS_SMOOTHING_FACTOR));
+            let currentFps = Math.round(smoothedFps);
+            
+            // 2. Мгновенная реакция на критический лаг
+            if (rawFps < LAG_THRESHOLD_FPS) {
+                currentFps = rawFps;
+            }
+
+            // 3. Заморозка FPS
+            if (currentFps < minAchievedFps) {
+                minAchievedFps = currentFps;
+            }
+
+            // 4. Отрисовка
+            let displayedFps = Math.min(currentFps, minAchievedFps);
+            
+            if (displayedFps <= LAG_THRESHOLD_FPS) {
+                fpsValue.textContent = displayedFps;
+                gameOver();
+                return; 
+            }
+
+            fpsValue.textContent = displayedFps;
+            updateSquirrels(delta); 
+
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        function setupListeners() {
+            gameArea.addEventListener('mousedown', startSpawning);
+            gameArea.addEventListener('touchstart', startSpawning, { passive: false });
+
+            document.addEventListener('mouseup', stopSpawning);
+            document.addEventListener('touchend', stopSpawning);
+            document.addEventListener('touchcancel', stopSpawning);
+        }
+
+        function removeListeners() {
+            gameArea.removeEventListener('mousedown', startSpawning);
+            gameArea.removeEventListener('touchstart', startSpawning, { passive: false });
+            document.removeEventListener('mouseup', stopSpawning);
+            document.removeEventListener('touchend', stopSpawning);
+            document.removeEventListener('touchcancel', stopSpawning);
+        }
+
+        function gameOver() {
+            cancelAnimationFrame(animationFrameId);
+            stopSpawning(); 
+            removeListeners();
+            
+            const finalScoreValue = score;
+            finalScore.textContent = finalScoreValue;
+            finalFpsDisplay.textContent = `Мин. FPS: ${minAchievedFps}`; 
+            modalOverlay.style.display = 'flex';
+            
+            saveProgress(finalScoreValue);
+        }
+
+        window.shareResult = function() {
+            const finalScoreValue = document.getElementById('final-score').textContent;
+            const finalFpsValue = minAchievedFps;
+            const message = `Моё устройство выдержало ${finalScoreValue} Белок, достигнув ${finalFpsValue} FPS! 🐿️ Проверь свой FPS в "Белка-Тестере"!`;
+            
+            if (isTelegram) {
+                tg.sendData(`score:${finalScoreValue}|fps:${finalFpsValue}`);
+                tg.close();
+            } else {
+                alert(`РЕЗУЛЬТАТ: ${message}`);
+            }
+        }
+
+
+        window.resetGame = function() {
+            modalOverlay.style.display = 'none';
+
+            score = 0;
+            scoreValue.textContent = '0';
+            
+            document.querySelectorAll('.squirrel').forEach(s => s.remove());
+            squirrels = []; 
+            
+            smoothedFps = 60; 
+            minAchievedFps = MAX_FPS_CAP; 
+
+            clickTip.style.display = 'block';
+
+            setupListeners();
+            lastTime = performance.now(); 
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // Инициализация
+        setupListeners();
+        animationFrameId = requestAnimationFrame(gameLoop);
+        modalOverlay.style.display = 'none';
+
+    </script>
+</body>
+</html>
