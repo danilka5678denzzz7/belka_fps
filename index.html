@@ -269,13 +269,9 @@
 
         let isHolding = false;
         let spawnIntervalId = null;
+        const SPAWN_RATE_MS = 1; 
+        const SQUIRRELS_PER_INTERVAL = 10; 
         
-        // ПЛАВНЫЙ ПАКЕТНЫЙ СПАВН
-        const PACKET_INTERVAL_MS = 50; // Интервал между белками в пакете (для плавности)
-        const SPAWN_REPETITION_RATE = 1; // Частота повторения всего пакета (1 мс - максимально быстро)
-        const SQUIRRELS_PER_PACKET = 10; // Количество белок в одном пакете
-        
-        // ОБНОВЛЕНО: Спавн одной белки
         function spawnSingleSquirrel() {
             score++;
             scoreValue.textContent = score;
@@ -322,10 +318,10 @@
             const interval = setInterval(() => {
                 spawnSingleSquirrel();
                 count++;
-                if (count >= SQUIRRELS_PER_PACKET) {
+                if (count >= SQUIRRELS_PER_INTERVAL) {
                     clearInterval(interval);
                 }
-            }, PACKET_INTERVAL_MS);
+            }, 50); // Интервал между белками в пакете (50 мс для плавности)
         }
 
         function startSpawning(e) {
@@ -338,8 +334,8 @@
             // Запускаем первый пакет сразу
             startSpawner();
 
-            // Устанавливаем интервал для повторения всего пакета (максимально часто)
-            spawnIntervalId = setInterval(startSpawner, SPAWN_REPETITION_RATE); 
+            // Устанавливаем интервал для повторения всего пакета (максимально быстро)
+            spawnIntervalId = setInterval(startSpawner, SPAWN_RATE_MS); 
         }
 
         function stopSpawning() {
@@ -497,6 +493,7 @@
 
         // Инициализация
         setupListeners();
+        lastTime = performance.now(); 
         animationFrameId = requestAnimationFrame(gameLoop);
         modalOverlay.style.display = 'none';
 
