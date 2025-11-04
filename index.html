@@ -258,13 +258,17 @@
 
         const SQUIRREL_SIZE = 30; 
         const MAX_FPS_CAP = 60; 
-        const LAG_THRESHOLD_FPS = 15; 
+        // ИЗМЕНЕНИЕ: Снижаем порог завершения для плавного падения
+        const LAG_THRESHOLD_FPS = 10; 
         const INITIAL_SQUIRREL_SPEED = 1.0; 
         const BUFFER_SIZE = 30; 
         
-        // КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Устанавливаем простой множитель 2x
-        const SCORE_MULTIPLIER = 2; 
+        // ЛОГИКА ДВУХ ФАЗ
+        const SCORE_MULTIPLIER_NORMAL = 2; // 2 очка за белку
+        const SCORE_MULTIPLIER_FULL = 100; // 100 очков за белку
+        const FULL_SCREEN_THRESHOLD = 800; // 800 белок на экране
         
+        // ИЗМЕНЕНИЕ: Ультра-сильное сглаживание
         let smoothedFps = 60; 
         const FPS_SMOOTHING_FACTOR = 0.01; 
 
@@ -274,13 +278,20 @@
         let spawnIntervalId = null;
         
         // Сбалансированный плавный спавн
-        const SPAWN_RATE_MS = 100; // 10 раз/сек
-        const SQUIRRELS_PER_INTERVAL = 10; // 10 белок за цикл
+        const SPAWN_RATE_MS = 100; 
+        const SQUIRRELS_PER_INTERVAL = 10; 
         
         
         function spawnSingleSquirrel() {
-            // Увеличиваем счет на 2
-            score += SCORE_MULTIPLIER;
+            // Определение текущего множителя
+            let currentMultiplier;
+            if (squirrels.length >= FULL_SCREEN_THRESHOLD) {
+                currentMultiplier = SCORE_MULTIPLIER_FULL;
+            } else {
+                currentMultiplier = SCORE_MULTIPLIER_NORMAL;
+            }
+
+            score += currentMultiplier;
             scoreValue.textContent = score;
 
             const squirrelElement = document.createElement('div');
@@ -403,10 +414,8 @@
             smoothedFps = (cappedFps * FPS_SMOOTHING_FACTOR) + (smoothedFps * (1 - FPS_SMOOTHING_FACTOR));
             let currentFps = Math.round(smoothedFps);
             
-            // 2. Мгновенная реакция на критический лаг
-            if (rawFps < LAG_THRESHOLD_FPS) {
-                currentFps = rawFps;
-            }
+            // 2. Мгновенная реакция на критический лаг (УДАЛЕНО: мгновенное принятие rawFps)
+            // Теперь полагаемся только на EMA для плавности.
 
             // 3. Заморозка FPS
             if (currentFps < minAchievedFps) {
@@ -416,6 +425,7 @@
             // 4. Отрисовка
             let displayedFps = Math.min(currentFps, minAchievedFps);
             
+            // КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Проверка порога
             if (displayedFps <= LAG_THRESHOLD_FPS) {
                 fpsValue.textContent = displayedFps;
                 gameOver();
