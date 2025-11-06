@@ -38,8 +38,9 @@
             width: 100%;
             cursor: pointer;
             
-            top: 60px; 
-            height: calc(100% - 60px); 
+            /* ИЗМЕНЕНИЕ 1: Скорректировано для TWA, чтобы занимать 100% */
+            top: 0; 
+            height: 100%; 
             
             background-color: #ffffff; 
             
@@ -62,6 +63,7 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             left: 50%;
             transform: translateX(-50%);
+            display: none; /* ИЗМЕНЕНИЕ 2: Скрываем его, чтобы не мешал touch-событиям */
         }
         
         /* КОНТЕЙНЕР ДЛЯ СЧЕТЧИКОВ */
@@ -79,6 +81,7 @@
             align-items: center;
             padding: 0 10px;
             box-sizing: border-box; 
+            pointer-events: none; /* ИЗМЕНЕНИЕ 3: Позволяет кликам проходить сквозь бар */
         }
 
 
@@ -92,6 +95,7 @@
             font-size: 1.2em; 
             border-radius: 5px;
             z-index: 210; 
+            pointer-events: auto; /* Возвращает кликабельность для самого box, если потребуется */
         }
 
         .squirrel {
@@ -263,8 +267,6 @@
         const BUFFER_SIZE = 30; 
         
         // --- ЛОГИКА СЧЕТА (УПРОЩЕНА ДО 1:1) ---
-        // Были: SCORE_MULTIPLIER_NORMAL, SCORE_MULTIPLIER_FULL, FULL_SCREEN_THRESHOLD
-        // Стало:
         const SCORE_INCREMENT = 1; // 1 белка = 1 очко
         
         let smoothedFps = 60; 
@@ -275,9 +277,10 @@
         let isHolding = false;
         let spawnIntervalId = null;
         
-        // Сбалансированный плавный спавн
-        const SPAWN_RATE_MS = 200; // КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: 200 мс (5 белок/сек)
-        const SQUIRRELS_PER_INTERVAL = 1; // 1 белка за цикл
+        // ИЗМЕНЕНИЕ 4: УСКОРЕНИЕ СПАВНА
+        // Спавн быстрее: 100 мс (10 раз в сек) и 2 белки за интервал = 20 белок/сек
+        const SPAWN_RATE_MS = 100; 
+        const SQUIRRELS_PER_INTERVAL = 2; 
         
         
         function spawnSingleSquirrel() {
@@ -318,7 +321,7 @@
             gameArea.appendChild(squirrelElement);
         }
 
-        // НОВАЯ ФУНКЦИЯ: Запуск пакета белок (1 белка за раз)
+        // НОВАЯ ФУНКЦИЯ: Запуск пакета белок (2 белки за раз)
         function startSpawner() {
             for (let i = 0; i < SQUIRRELS_PER_INTERVAL; i++) {
                 spawnSingleSquirrel();
@@ -410,21 +413,21 @@
                 currentFps = rawFps;
             }
 
-            // 3. Заморозка FPS
-            if (currentFps < minAchievedFps) {
-                minAchievedFps = currentFps;
-            }
-
-            // 4. Отрисовка
-            let displayedFps = Math.min(currentFps, minAchievedFps);
-            
-            if (displayedFps <= LAG_THRESHOLD_FPS) {
-                fpsValue.textContent = displayedFps;
+            // ИЗМЕНЕНИЕ 5: ИСПРАВЛЕННАЯ ЛОГИКА GAME OVER
+            // Проверяем, если ТЕКУЩИЙ (сглаженный или мгновенный) FPS ниже порога.
+            if (currentFps <= LAG_THRESHOLD_FPS) {
+                fpsValue.textContent = currentFps;
                 gameOver();
                 return; 
             }
 
-            fpsValue.textContent = displayedFps;
+            // 3. Заморозка FPS: обновляем minAchievedFps, если текущий ниже.
+            if (currentFps < minAchievedFps) {
+                minAchievedFps = currentFps;
+            }
+
+            // 4. Отрисовка: показываем минимальный достигнутый FPS (результат стресс-теста)
+            fpsValue.textContent = minAchievedFps; 
             updateSquirrels(delta); 
 
             animationFrameId = requestAnimationFrame(gameLoop);
